@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getEntries, deleteEntry, updateEntry, type CensusEntry } from "@/lib/census-data";
 
-const CHART_COLORS = ["#0080ff", "#00c8ff", "#0050cc", "#00a0e0", "#003399", "#66d9ff"];
+const CHART_COLORS = ["hsl(0,85%,50%)", "hsl(15,100%,55%)", "hsl(0,60%,40%)", "hsl(350,80%,60%)", "hsl(10,90%,45%)", "hsl(0,70%,70%)"];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -41,7 +41,6 @@ export default function AdminDashboard() {
     );
   }, [entries, searchQuery]);
 
-  // Stats
   const stats = useMemo(() => {
     const totalFamilies = entries.length;
     const totalPopulation = entries.reduce((s, e) => s + e.numberOfMembers, 0);
@@ -95,7 +94,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="glass-strong border-b border-border sticky top-0 z-20">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -114,7 +112,6 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { icon: HomeIcon, label: "Total Families", value: stats.totalFamilies, color: "text-primary" },
@@ -130,7 +127,6 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Charts */}
         {entries.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="glass neon-border rounded-xl p-4">
@@ -152,14 +148,13 @@ export default function AdminDashboard() {
                   <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="hsl(210,100%,50%)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="value" fill="hsl(0,85%,50%)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         )}
 
-        {/* Search + Table */}
         <div className="glass neon-border rounded-xl p-4">
           <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
             <h3 className="font-display font-semibold text-foreground">Census Entries ({filtered.length})</h3>
@@ -214,7 +209,6 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Edit Modal */}
         {editingId && editData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <motion.div

@@ -8,9 +8,11 @@ interface Props {
   onChange: (v: string) => void;
   searchable?: boolean;
   required?: boolean;
+  error?: string;
+  onEnter?: () => void;
 }
 
-export default function FloatingSelect({ label, options, value, onChange, searchable = false, required }: Props) {
+export default function FloatingSelect({ label, options, value, onChange, searchable = false, required, error, onEnter }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -27,12 +29,33 @@ export default function FloatingSelect({ label, options, value, onChange, search
     ? options.filter(o => o.toLowerCase().includes(search.toLowerCase()))
     : options;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (open) {
+        // If dropdown is open and there's a single match, select it
+        if (filtered.length === 1) {
+          onChange(filtered[0]);
+          setOpen(false);
+          setSearch("");
+          onEnter?.();
+        }
+      } else {
+        setOpen(true);
+      }
+    }
+  };
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full glass neon-border rounded-lg px-4 py-3 text-left text-foreground flex items-center justify-between transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring"
+        onKeyDown={handleKeyDown}
+        className={`w-full glass rounded-lg px-4 py-3 text-left text-foreground flex items-center justify-between transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring ${
+          error ? "border-destructive" : "neon-border"
+        }`}
+        style={error ? { borderColor: "hsl(var(--destructive))", boxShadow: "0 0 10px hsl(var(--destructive) / 0.2)" } : undefined}
       >
         <span className={value ? "text-foreground" : "text-muted-foreground"}>
           {value || label}
@@ -41,9 +64,12 @@ export default function FloatingSelect({ label, options, value, onChange, search
       </button>
       {/* Floating label */}
       {value && (
-        <span className="absolute -top-2.5 left-3 bg-card px-1.5 text-xs text-primary font-medium">
+        <span className={`absolute -top-2.5 left-3 bg-card px-1.5 text-xs font-medium ${error ? "text-destructive" : "text-primary"}`}>
           {label} {required && "*"}
         </span>
+      )}
+      {error && (
+        <p className="text-xs text-destructive mt-1 ml-1">{error}</p>
       )}
       {open && (
         <div className="absolute z-50 mt-1 w-full glass-strong neon-border rounded-lg shadow-xl max-h-60 overflow-auto">
@@ -64,7 +90,7 @@ export default function FloatingSelect({ label, options, value, onChange, search
             <button
               type="button"
               key={opt}
-              onClick={() => { onChange(opt); setOpen(false); setSearch(""); }}
+              onClick={() => { onChange(opt); setOpen(false); setSearch(""); onEnter?.(); }}
               className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-primary/10 ${
                 opt === value ? "text-primary font-medium bg-primary/5" : "text-foreground"
               }`}
