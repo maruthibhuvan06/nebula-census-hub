@@ -1,10 +1,20 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, BarChart3 } from "lucide-react";
+import { Shield, BarChart3, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CensusForm from "@/components/CensusForm";
+import { getCurrentUser, logout } from "@/lib/auth";
+import { useNavigate } from "react-router-dom";
 
 export default function Index() {
+  const user = getCurrentUser();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Background effects */}
@@ -32,12 +42,23 @@ export default function Index() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {user && (
+              <span className="text-sm text-muted-foreground hidden sm:block">
+                Welcome, <span className="text-primary font-medium">{user.username}</span>
+              </span>
+            )}
             <Link
               to="/admin"
               className="glass neon-border rounded-lg px-4 py-2 text-sm font-medium text-foreground flex items-center gap-2 transition-all hover:bg-primary/10"
             >
               <BarChart3 className="h-4 w-4 text-primary" /> Admin
             </Link>
+            <button
+              onClick={handleLogout}
+              className="glass neon-border rounded-lg px-4 py-2 text-sm font-medium text-foreground flex items-center gap-2 transition-all hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" /> Logout
+            </button>
             <ThemeToggle />
           </div>
         </div>

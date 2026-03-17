@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, UserPlus, MapPin, Home, Users, BarChart3, CheckCircle } from "lucide-react";
+import { Send, UserPlus, MapPin, Home, Users, BarChart3, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import FloatingInput from "./FloatingInput";
 import FloatingSelect from "./FloatingSelect";
@@ -18,9 +18,14 @@ const emptyMember = (): FamilyMember => ({
   workingStatus: "", maritalStatus: "", phone: "", aadhaar: "",
 });
 
+type Errors = Record<string, string>;
+
 export default function CensusForm() {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Errors>({});
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Location
   const [state, setState] = useState("");
@@ -54,6 +59,8 @@ export default function CensusForm() {
 
   const updateMember = (idx: number, field: keyof FamilyMember, val: string) => {
     setMembers(prev => prev.map((m, i) => i === idx ? { ...m, [field]: val } : m));
+    // Clear member error
+    setErrors(prev => { const n = { ...prev }; delete n[`member_${idx}_${field}`]; return n; });
   };
 
   const handleMemberCountChange = (val: string) => {
@@ -69,14 +76,72 @@ export default function CensusForm() {
     setMembers(Array.from({ length: count }, () => emptyMember()));
   };
 
-  const canProceed = () => {
-    if (step === 0) return state && district && village && pincode;
-    if (step === 1) return headOfFamily && houseNumber && houseType && memberCount && actualCount > 0;
-    if (step === 2) return members.length > 0 && members.every(m => m.name && m.age && m.gender);
-    return true;
+  const clearError = (field: string) => {
+    setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
 
-  const handleSubmit = () => {
+  // Validation per step
+  const validateStep = useCallback((): Errors => {
+    const e: Errors = {};
+    if (step === 0) {
+      if (!state) e.state = "Please select a state";
+      if (!district) e.district = "Please select a district";
+      if (!village.trim()) e.village = "Please enter village / area";
+      if (!pincode) e.pincode = "Please enter pincode";
+      else if (!/^\d{6}$/.test(pincode)) e.pincode = "Pincode must be 6 digits";
+    }
+    if (step === 1) {
+      if (!headOfFamily.trim()) e.headOfFamily = "Please enter head of family name";
+      if (!houseNumber.trim()) e.houseNumber = "Please enter house number";
+      if (!houseType) e.houseType = "Please select house type";
+      if (!memberCount) e.memberCount = "Please select number of members";
+      if (memberCount === "More than 9" && (!customCount || parseInt(customCount) < 1)) e.customCount = "Enter a valid number";
+    }
+    if (step === 2) {
+      members.forEach((m, i) => {
+        if (!m.name.trim()) e[`member_${i}_name`] = "Please enter name";
+        if (!m.age) e[`member_${i}_age`] = "Please enter age";
+        else if (isNaN(Number(m.age)) || Number(m.age) < 0 || Number(m.age) > 150) e[`member_${i}_age`] = "Enter a valid age";
+        if (!m.gender) e[`member_${i}_gender`] = "Please select gender";
+        if (m.phone && !/^\d{10}$/.test(m.phone)) e[`member_${i}_phone`] = "Phone must be 10 digits";
+        if (m.aadhaar && !/^\d{12}$/.test(m.aadhaar)) e[`member_${i}_aadhaar`] = "Aadhaar must be 12 digits";
+      });
+      if (members.length === 0) e.members = "Please add at least one family member";
+    }
+    return e;
+  }, [step, state, district, village, pincode, headOfFamily, houseNumber, houseType, memberCount, customCount, members]);
+
+  const scrollToFirstError = () => {
+    setTimeout(() => {
+      const el = formRef.current?.querySelector("[data-error='true']") || formRef.current?.querySelector(".text-destructive");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const handleNext = () => {
+    const errs = validateStep();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error("Please fix the highlighted errors");
+      scrollToFirstError();
+      return;
+    }
+    setStep(step + 1);
+  };
+
+  const handleSubmit = async () => {
+    const errs = validateStep();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error("Please fix the highlighted errors");
+      scrollToFirstError();
+      return;
+    }
+
+    setSubmitting(true);
+    // Simulate backend save
+    await new Promise(r => setTimeout(r, 800));
+
     const entry: CensusEntry = {
       id: crypto.randomUUID(),
       state, district, taluk, village, pincode,
@@ -89,8 +154,9 @@ export default function CensusForm() {
       submittedAt: new Date().toISOString(),
     };
     addEntry(entry);
+    setSubmitting(false);
     setSubmitted(true);
-    toast.success("Census data submitted successfully!");
+    toast.success("✅ Data submitted successfully!");
   };
 
   if (submitted) {
@@ -108,7 +174,7 @@ export default function CensusForm() {
           <CheckCircle className="h-20 w-20 text-green-400 mx-auto mb-6" />
         </motion.div>
         <h2 className="text-2xl font-display font-bold text-foreground mb-3">Submission Successful!</h2>
-        <p className="text-muted-foreground mb-6">Your census data has been recorded.</p>
+        <p className="text-muted-foreground mb-6">Your census data has been recorded securely.</p>
         <button
           onClick={() => window.location.reload()}
           className="gradient-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold neon-glow transition-transform hover:scale-105"
@@ -123,7 +189,7 @@ export default function CensusForm() {
   const taluks = TALUKS[district] || [];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto" ref={formRef}>
       <ProgressIndicator steps={STEPS} current={step} />
 
       <AnimatePresence mode="wait">
@@ -143,11 +209,11 @@ export default function CensusForm() {
               </h2>
               <p className="text-sm text-muted-foreground mb-6">Select your location details</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FloatingSelect label="State" options={STATES} value={state} onChange={v => { setState(v); setDistrict(""); setTaluk(""); }} searchable required />
-                <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); setTaluk(""); }} searchable required />
-                <FloatingSelect label="Taluk" options={taluks} value={taluk} onChange={setTaluk} searchable />
-                <FloatingInput label="Village / Area" value={village} onChange={setVillage} required />
-                <FloatingInput label="Pincode" value={pincode} onChange={setPincode} type="text" maxLength={6} required />
+                <FloatingSelect label="State" options={STATES} value={state} onChange={v => { setState(v); setDistrict(""); setTaluk(""); clearError("state"); }} searchable required error={errors.state} />
+                <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); setTaluk(""); clearError("district"); }} searchable required error={errors.district} />
+                <FloatingSelect label="Taluk" options={taluks} value={taluk} onChange={v => { setTaluk(v); }} searchable />
+                <FloatingInput label="Village / Area" value={village} onChange={v => { setVillage(v); clearError("village"); }} required error={errors.village} />
+                <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
               </div>
             </div>
           )}
@@ -160,19 +226,20 @@ export default function CensusForm() {
               </h2>
               <p className="text-sm text-muted-foreground mb-6">Enter family head information</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FloatingInput label="Head of Family Name" value={headOfFamily} onChange={setHeadOfFamily} required />
-                <FloatingInput label="House Number" value={houseNumber} onChange={setHouseNumber} required />
-                <FloatingSelect label="Type of House" options={HOUSE_TYPES} value={houseType} onChange={setHouseType} required />
+                <FloatingInput label="Head of Family Name" value={headOfFamily} onChange={v => { setHeadOfFamily(v); clearError("headOfFamily"); }} required error={errors.headOfFamily} />
+                <FloatingInput label="House Number" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} required error={errors.houseNumber} />
+                <FloatingSelect label="Type of House" options={HOUSE_TYPES} value={houseType} onChange={v => { setHouseType(v); clearError("houseType"); }} required error={errors.houseType} />
                 <FloatingSelect
                   label="Number of Family Members"
                   options={["1","2","3","4","5","6","7","8","9","More than 9"]}
                   value={memberCount}
-                  onChange={handleMemberCountChange}
+                  onChange={v => { handleMemberCountChange(v); clearError("memberCount"); }}
                   required
+                  error={errors.memberCount}
                 />
                 {memberCount === "More than 9" && (
                   <div className="flex gap-2 md:col-span-2">
-                    <FloatingInput label="Enter exact number" value={customCount} onChange={setCustomCount} type="number" />
+                    <FloatingInput label="Enter exact number" value={customCount} onChange={v => { setCustomCount(v); clearError("customCount"); }} numericOnly error={errors.customCount} />
                     <button type="button" onClick={applyCustomCount} className="gradient-primary text-primary-foreground px-4 rounded-lg font-medium">
                       Apply
                     </button>
@@ -189,6 +256,7 @@ export default function CensusForm() {
                 <Users className="h-5 w-5 text-primary" /> Family Members ({members.length})
               </h2>
               <p className="text-sm text-muted-foreground mb-6">Enter details for each family member</p>
+              {errors.members && <p className="text-sm text-destructive mb-4">{errors.members}</p>}
               <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
                 {members.map((m, i) => (
                   <motion.div
@@ -203,15 +271,15 @@ export default function CensusForm() {
                       <span className="text-sm font-display font-semibold text-foreground">Member {i + 1}</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <FloatingInput label="Name" value={m.name} onChange={v => updateMember(i, "name", v)} required />
-                      <FloatingInput label="Age" value={m.age} onChange={v => updateMember(i, "age", v)} type="number" required />
-                      <FloatingSelect label="Gender" options={["Male","Female","Other"]} value={m.gender} onChange={v => updateMember(i, "gender", v)} required />
+                      <FloatingInput label="Name" value={m.name} onChange={v => updateMember(i, "name", v)} required error={errors[`member_${i}_name`]} />
+                      <FloatingInput label="Age" value={m.age} onChange={v => updateMember(i, "age", v)} numericOnly required error={errors[`member_${i}_age`]} maxLength={3} />
+                      <FloatingSelect label="Gender" options={["Male","Female","Other"]} value={m.gender} onChange={v => updateMember(i, "gender", v)} required error={errors[`member_${i}_gender`]} />
                       <FloatingSelect label="Education" options={EDUCATION_LEVELS} value={m.education} onChange={v => updateMember(i, "education", v)} />
                       <FloatingSelect label="Occupation" options={OCCUPATIONS} value={m.occupation} onChange={v => updateMember(i, "occupation", v)} />
                       <FloatingSelect label="Working Status" options={["Yes","No"]} value={m.workingStatus} onChange={v => updateMember(i, "workingStatus", v)} />
                       <FloatingSelect label="Marital Status" options={["Single","Married","Widowed","Divorced"]} value={m.maritalStatus} onChange={v => updateMember(i, "maritalStatus", v)} />
-                      <FloatingInput label="Phone Number" value={m.phone} onChange={v => updateMember(i, "phone", v)} maxLength={10} />
-                      <FloatingInput label="Aadhaar (Optional)" value={m.aadhaar} onChange={v => updateMember(i, "aadhaar", v)} maxLength={12} />
+                      <FloatingInput label="Phone Number" value={m.phone} onChange={v => updateMember(i, "phone", v)} maxLength={10} numericOnly error={errors[`member_${i}_phone`]} />
+                      <FloatingInput label="Aadhaar (Optional)" value={m.aadhaar} onChange={v => updateMember(i, "aadhaar", v)} maxLength={12} numericOnly error={errors[`member_${i}_aadhaar`]} />
                     </div>
                   </motion.div>
                 ))}
@@ -255,9 +323,8 @@ export default function CensusForm() {
             {step < STEPS.length - 1 ? (
               <button
                 type="button"
-                onClick={() => canProceed() && setStep(step + 1)}
-                disabled={!canProceed()}
-                className="gradient-primary text-primary-foreground px-6 py-2.5 rounded-lg font-semibold neon-glow transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                onClick={handleNext}
+                className="gradient-primary text-primary-foreground px-6 py-2.5 rounded-lg font-semibold neon-glow transition-all hover:scale-105"
               >
                 Next
               </button>
@@ -265,11 +332,13 @@ export default function CensusForm() {
               <motion.button
                 type="button"
                 onClick={handleSubmit}
+                disabled={submitting}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="gradient-primary text-primary-foreground px-8 py-2.5 rounded-lg font-semibold neon-glow flex items-center gap-2 animate-pulse-neon"
+                className="gradient-primary text-primary-foreground px-8 py-2.5 rounded-lg font-semibold neon-glow flex items-center gap-2 animate-pulse-neon disabled:opacity-60"
               >
-                <Send className="h-4 w-4" /> Submit Census
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {submitting ? "Submitting..." : "Submit Census"}
               </motion.button>
             )}
           </div>
