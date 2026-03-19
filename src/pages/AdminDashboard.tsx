@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getEntries, deleteEntry, updateEntry, type CensusEntry } from "@/lib/census-data";
 
-const CHART_COLORS = ["hsl(0,85%,50%)", "hsl(15,100%,55%)", "hsl(0,60%,40%)", "hsl(350,80%,60%)", "hsl(10,90%,45%)", "hsl(0,70%,70%)"];
+const CHART_COLORS = ["hsl(210,100%,50%)", "hsl(200,100%,55%)", "hsl(220,80%,45%)", "hsl(190,90%,50%)", "hsl(230,70%,55%)", "hsl(210,60%,65%)"];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
                   <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="hsl(0,85%,50%)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="value" fill="hsl(210,100%,50%)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, UserPlus, MapPin, Home, Users, BarChart3, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -6,7 +6,7 @@ import FloatingInput from "./FloatingInput";
 import FloatingSelect from "./FloatingSelect";
 import ProgressIndicator from "./ProgressIndicator";
 import {
-  STATES, DISTRICTS, TALUKS, EDUCATION_LEVELS, OCCUPATIONS, RELIGIONS,
+  STATES, DISTRICTS, EDUCATION_LEVELS, OCCUPATIONS, RELIGIONS,
   CATEGORIES, WATER_SOURCES, INCOME_RANGES, HOUSE_TYPES,
   type FamilyMember, type CensusEntry, addEntry,
 } from "@/lib/census-data";
@@ -33,6 +33,7 @@ export default function CensusForm() {
   const [taluk, setTaluk] = useState("");
   const [village, setVillage] = useState("");
   const [pincode, setPincode] = useState("");
+  const [pincodeLoading, setPincodeLoading] = useState(false);
 
   // Family
   const [headOfFamily, setHeadOfFamily] = useState("");
@@ -57,9 +58,39 @@ export default function CensusForm() {
 
   const actualCount = memberCount === "More than 9" ? parseInt(customCount) || 0 : parseInt(memberCount) || 0;
 
+  // Pincode auto-fill
+  useEffect(() => {
+    if (pincode.length !== 6) return;
+    const controller = new AbortController();
+    setPincodeLoading(true);
+    fetch(`https://api.postalpincode.in/pincode/${pincode}`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.[0]?.Status === "Success" && data[0].PostOffice?.length > 0) {
+          const po = data[0].PostOffice[0];
+          // Try to match state from our list
+          const matchedState = STATES.find(s => s.toLowerCase() === po.State?.toLowerCase());
+          if (matchedState) {
+            setState(matchedState);
+            const dists = DISTRICTS[matchedState] || [];
+            const matchedDist = dists.find(d => d.toLowerCase() === po.District?.toLowerCase());
+            if (matchedDist) setDistrict(matchedDist);
+          }
+          if (po.Name) setVillage(po.Name);
+          clearError("state"); clearError("district"); clearError("village"); clearError("pincode");
+        } else {
+          toast.error("Invalid Pincode");
+        }
+      })
+      .catch(err => {
+        if (err.name !== "AbortError") toast.error("Could not fetch pincode data");
+      })
+      .finally(() => setPincodeLoading(false));
+    return () => controller.abort();
+  }, [pincode]);
+
   const updateMember = (idx: number, field: keyof FamilyMember, val: string) => {
     setMembers(prev => prev.map((m, i) => i === idx ? { ...m, [field]: val } : m));
-    // Clear member error
     setErrors(prev => { const n = { ...prev }; delete n[`member_${idx}_${field}`]; return n; });
   };
 
@@ -80,14 +111,13 @@ export default function CensusForm() {
     setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
 
-  // Validation per step
   const validateStep = useCallback((): Errors => {
     const e: Errors = {};
     if (step === 0) {
       if (!state) e.state = "Please select a state";
       if (!district) e.district = "Please select a district";
       if (!village.trim()) e.village = "Please enter village / area";
-      if (!pincode) e.pincode = "Please enter pincode";
+      if (!pincode) e.pincode = "Pincode is required";
       else if (!/^\d{6}$/.test(pincode)) e.pincode = "Pincode must be 6 digits";
     }
     if (step === 1) {
@@ -103,7 +133,7 @@ export default function CensusForm() {
         if (!m.age) e[`member_${i}_age`] = "Please enter age";
         else if (isNaN(Number(m.age)) || Number(m.age) < 0 || Number(m.age) > 150) e[`member_${i}_age`] = "Enter a valid age";
         if (!m.gender) e[`member_${i}_gender`] = "Please select gender";
-        if (m.phone && !/^\d{10}$/.test(m.phone)) e[`member_${i}_phone`] = "Phone must be 10 digits";
+        if (m.phone && !/^\d{10}$/.test(m.phone)) e[`member_${i}_phone`] = "Enter valid phone number (10 digits)";
         if (m.aadhaar && !/^\d{12}$/.test(m.aadhaar)) e[`member_${i}_aadhaar`] = "Aadhaar must be 12 digits";
       });
       if (members.length === 0) e.members = "Please add at least one family member";
@@ -121,25 +151,16 @@ export default function CensusForm() {
   const handleNext = () => {
     const errs = validateStep();
     setErrors(errs);
-    if (Object.keys(errs).length > 0) {
-      toast.error("Please fix the highlighted errors");
-      scrollToFirstError();
-      return;
-    }
+    if (Object.keys(errs).length > 0) { toast.error("Please fix the highlighted errors"); scrollToFirstError(); return; }
     setStep(step + 1);
   };
 
   const handleSubmit = async () => {
     const errs = validateStep();
     setErrors(errs);
-    if (Object.keys(errs).length > 0) {
-      toast.error("Please fix the highlighted errors");
-      scrollToFirstError();
-      return;
-    }
+    if (Object.keys(errs).length > 0) { toast.error("Please fix the highlighted errors"); scrollToFirstError(); return; }
 
     setSubmitting(true);
-    // Simulate backend save
     await new Promise(r => setTimeout(r, 800));
 
     const entry: CensusEntry = {
@@ -156,29 +177,18 @@ export default function CensusForm() {
     addEntry(entry);
     setSubmitting(false);
     setSubmitted(true);
-    toast.success("✅ Data submitted successfully!");
+    toast.success("✅ Census data submitted successfully!");
   };
 
   if (submitted) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass neon-border rounded-2xl p-12 text-center max-w-lg mx-auto"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", delay: 0.2 }}
-        >
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="glass neon-border rounded-2xl p-12 text-center max-w-lg mx-auto">
+        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}>
           <CheckCircle className="h-20 w-20 text-green-400 mx-auto mb-6" />
         </motion.div>
         <h2 className="text-2xl font-display font-bold text-foreground mb-3">Submission Successful!</h2>
         <p className="text-muted-foreground mb-6">Your census data has been recorded securely.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="gradient-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold neon-glow transition-transform hover:scale-105"
-        >
+        <button onClick={() => window.location.reload()} className="gradient-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold neon-glow transition-transform hover:scale-105">
           Submit Another Entry
         </button>
       </motion.div>
@@ -186,34 +196,29 @@ export default function CensusForm() {
   }
 
   const districts = DISTRICTS[state] || [];
-  const taluks = TALUKS[district] || [];
 
   return (
     <div className="max-w-4xl mx-auto" ref={formRef}>
       <ProgressIndicator steps={STEPS} current={step} />
 
       <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -40 }}
-          transition={{ duration: 0.3 }}
-          className="glass neon-border rounded-2xl p-6 md:p-8"
-        >
+        <motion.div key={step} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }} className="glass neon-border rounded-2xl p-6 md:p-8">
           {/* Step 0: Location */}
           {step === 0 && (
             <div>
               <h2 className="text-xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" /> Location Information
               </h2>
-              <p className="text-sm text-muted-foreground mb-6">Select your location details</p>
+              <p className="text-sm text-muted-foreground mb-6">Enter pincode first for auto-fill, or select manually</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FloatingSelect label="State" options={STATES} value={state} onChange={v => { setState(v); setDistrict(""); setTaluk(""); clearError("state"); }} searchable required error={errors.state} />
-                <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); setTaluk(""); clearError("district"); }} searchable required error={errors.district} />
-                <FloatingSelect label="Taluk" options={taluks} value={taluk} onChange={v => { setTaluk(v); }} searchable />
+                <div className="relative">
+                  <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
+                  {pincodeLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-primary" />}
+                </div>
+                <FloatingSelect label="State" options={STATES} value={state} onChange={v => { setState(v); setDistrict(""); clearError("state"); }} searchable required error={errors.state} />
+                <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); clearError("district"); }} searchable required error={errors.district} />
+                <FloatingInput label="Taluk" value={taluk} onChange={v => setTaluk(v)} />
                 <FloatingInput label="Village / Area" value={village} onChange={v => { setVillage(v); clearError("village"); }} required error={errors.village} />
-                <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
               </div>
             </div>
           )}
@@ -229,20 +234,11 @@ export default function CensusForm() {
                 <FloatingInput label="Head of Family Name" value={headOfFamily} onChange={v => { setHeadOfFamily(v); clearError("headOfFamily"); }} required error={errors.headOfFamily} />
                 <FloatingInput label="House Number" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} required error={errors.houseNumber} />
                 <FloatingSelect label="Type of House" options={HOUSE_TYPES} value={houseType} onChange={v => { setHouseType(v); clearError("houseType"); }} required error={errors.houseType} />
-                <FloatingSelect
-                  label="Number of Family Members"
-                  options={["1","2","3","4","5","6","7","8","9","More than 9"]}
-                  value={memberCount}
-                  onChange={v => { handleMemberCountChange(v); clearError("memberCount"); }}
-                  required
-                  error={errors.memberCount}
-                />
+                <FloatingSelect label="Number of Family Members" options={["1","2","3","4","5","6","7","8","9","More than 9"]} value={memberCount} onChange={v => { handleMemberCountChange(v); clearError("memberCount"); }} required error={errors.memberCount} />
                 {memberCount === "More than 9" && (
                   <div className="flex gap-2 md:col-span-2">
                     <FloatingInput label="Enter exact number" value={customCount} onChange={v => { setCustomCount(v); clearError("customCount"); }} numericOnly error={errors.customCount} />
-                    <button type="button" onClick={applyCustomCount} className="gradient-primary text-primary-foreground px-4 rounded-lg font-medium">
-                      Apply
-                    </button>
+                    <button type="button" onClick={applyCustomCount} className="gradient-primary text-primary-foreground px-4 rounded-lg font-medium">Apply</button>
                   </div>
                 )}
               </div>
@@ -259,13 +255,7 @@ export default function CensusForm() {
               {errors.members && <p className="text-sm text-destructive mb-4">{errors.members}</p>}
               <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
                 {members.map((m, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="glass rounded-xl p-4 border border-border"
-                  >
+                  <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass rounded-xl p-4 border border-border">
                     <div className="flex items-center gap-2 mb-3">
                       <UserPlus className="h-4 w-4 text-primary" />
                       <span className="text-sm font-display font-semibold text-foreground">Member {i + 1}</span>
@@ -311,32 +301,12 @@ export default function CensusForm() {
           {/* Navigation */}
           <div className="flex justify-between mt-8">
             {step > 0 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step - 1)}
-                className="glass neon-border px-6 py-2.5 rounded-lg font-medium text-foreground transition-all hover:bg-primary/10"
-              >
-                Previous
-              </button>
+              <button type="button" onClick={() => setStep(step - 1)} className="glass neon-border px-6 py-2.5 rounded-lg font-medium text-foreground transition-all hover:bg-primary/10">Previous</button>
             ) : <div />}
-
             {step < STEPS.length - 1 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="gradient-primary text-primary-foreground px-6 py-2.5 rounded-lg font-semibold neon-glow transition-all hover:scale-105"
-              >
-                Next
-              </button>
+              <button type="button" onClick={handleNext} className="gradient-primary text-primary-foreground px-6 py-2.5 rounded-lg font-semibold neon-glow transition-all hover:scale-105">Next</button>
             ) : (
-              <motion.button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitting}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="gradient-primary text-primary-foreground px-8 py-2.5 rounded-lg font-semibold neon-glow flex items-center gap-2 animate-pulse-neon disabled:opacity-60"
-              >
+              <motion.button type="button" onClick={handleSubmit} disabled={submitting} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="gradient-primary text-primary-foreground px-8 py-2.5 rounded-lg font-semibold neon-glow flex items-center gap-2 disabled:opacity-60">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {submitting ? "Submitting..." : "Submit Census"}
               </motion.button>
