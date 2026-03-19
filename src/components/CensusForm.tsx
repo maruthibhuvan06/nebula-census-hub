@@ -58,7 +58,7 @@ export default function CensusForm() {
 
   const actualCount = memberCount === "More than 9" ? parseInt(customCount) || 0 : parseInt(memberCount) || 0;
 
-  // Pincode auto-fill
+  // Pincode auto-fill: State, District, Taluk only
   useEffect(() => {
     if (pincode.length !== 6) return;
     const controller = new AbortController();
@@ -68,7 +68,7 @@ export default function CensusForm() {
       .then(data => {
         if (data?.[0]?.Status === "Success" && data[0].PostOffice?.length > 0) {
           const po = data[0].PostOffice[0];
-          // Try to match state from our list
+          // Auto-fill State
           const matchedState = STATES.find(s => s.toLowerCase() === po.State?.toLowerCase());
           if (matchedState) {
             setState(matchedState);
@@ -76,14 +76,19 @@ export default function CensusForm() {
             const matchedDist = dists.find(d => d.toLowerCase() === po.District?.toLowerCase());
             if (matchedDist) setDistrict(matchedDist);
           }
-          if (po.Name) setVillage(po.Name);
-          clearError("state"); clearError("district"); clearError("village"); clearError("pincode");
+          // Auto-fill Taluk (Block field from API)
+          if (po.Block && po.Block !== "NA") {
+            setTaluk(po.Block);
+          } else if (po.Division) {
+            setTaluk(po.Division);
+          }
+          clearError("state"); clearError("district"); clearError("taluk"); clearError("pincode");
         } else {
           toast.error("Invalid Pincode");
         }
       })
       .catch(err => {
-        if (err.name !== "AbortError") toast.error("Could not fetch pincode data");
+        if (err.name !== "AbortError") toast.error("Unable to fetch location. Please enter manually.");
       })
       .finally(() => setPincodeLoading(false));
     return () => controller.abort();

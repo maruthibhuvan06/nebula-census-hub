@@ -38,7 +38,6 @@ export default function Index() {
               <h1 className="font-display font-bold text-lg leading-tight text-foreground">
                 Smart Census Portal
               </h1>
-              <p className="text-xs text-muted-foreground font-medium">Maruthi Bhuvan GB</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

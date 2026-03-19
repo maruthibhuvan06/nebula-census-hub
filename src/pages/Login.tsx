@@ -89,7 +89,6 @@ export default function Login() {
           </motion.div>
           <div>
             <h1 className="font-display font-bold text-xl text-foreground">Smart Census Portal</h1>
-            <p className="text-xs text-muted-foreground">Maruthi Bhuvan GB</p>
           </div>
         </div>
 
