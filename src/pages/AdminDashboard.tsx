@@ -148,7 +148,7 @@ export default function AdminDashboard() {
                   <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="hsl(0,85%,50%)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="value" fill="hsl(210,100%,50%)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
