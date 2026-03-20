@@ -312,26 +312,8 @@ export default function CensusForm() {
             </div>
           )}
 
-          {/* Step 4: Pincode (final step) */}
-          {step === 4 && (
-            <div>
-              <h2 className="text-xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" /> Pincode Verification
-              </h2>
-              <p className="text-sm text-muted-foreground mb-6">Enter your 6-digit pincode to auto-fill State and District</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
-                  {pincodeLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-primary" />}
-                </div>
-                <div className="glass rounded-lg p-4 border border-border">
-                  <p className="text-xs text-muted-foreground mb-2">Auto-filled from pincode:</p>
-                  <p className="text-sm text-foreground"><span className="text-muted-foreground">State:</span> {state || "—"}</p>
-                  <p className="text-sm text-foreground"><span className="text-muted-foreground">District:</span> {district || "—"}</p>
-                </div>
-              </div>
-            </div>
-          )}
+
+
 
           {/* Navigation */}
           <div className="flex justify-between mt-8">
