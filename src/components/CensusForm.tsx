@@ -11,8 +11,8 @@ import {
   type FamilyMember, type CensusEntry, addEntry,
 } from "@/lib/census-data";
 
-// Steps: Location → Family → Members → Additional → Pincode (last)
-const STEPS = ["Location", "Family", "Members", "Additional", "Pincode"];
+// Steps: Address → Family → Members → Additional
+const STEPS = ["Address", "Family", "Members", "Additional"];
 
 const emptyMember = (): FamilyMember => ({
   name: "", age: "", gender: "", education: "", occupation: "",
