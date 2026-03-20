@@ -71,7 +71,7 @@ export default function Index() {
           className="text-center mb-8"
         >
           <h2 className="text-3xl md:text-4xl font-display font-bold gradient-text mb-2">
-            National Census 2025
+            National Census – Smart Census Portal
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
             Fill in your household details below. All information is kept secure and confidential.
