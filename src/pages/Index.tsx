@@ -35,8 +35,8 @@ export default function Index() {
               <Shield className="h-5 w-5 text-primary-foreground" />
             </motion.div>
             <div>
-              <h1 className="font-display font-bold text-lg leading-tight text-foreground">
-                Smart Census Portal
+            <h1 className="font-display font-bold text-lg leading-tight text-foreground">
+                National Census – Smart Census Portal
               </h1>
             </div>
           </div>
