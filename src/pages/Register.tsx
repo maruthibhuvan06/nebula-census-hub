@@ -78,7 +78,7 @@ export default function Register() {
           </motion.div>
           <div>
             <h1 className="font-display font-bold text-xl text-foreground">Create Account</h1>
-            <p className="text-xs text-muted-foreground">Smart Census Portal</p>
+            <p className="text-xs text-muted-foreground">National Census – Smart Census Portal</p>
           </div>
         </div>
 
