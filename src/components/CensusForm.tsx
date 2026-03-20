@@ -126,7 +126,7 @@ export default function CensusForm() {
     // Step 1: Family details
     if (step === 1) {
       if (!headOfFamily.trim()) e.headOfFamily = "Please enter head of family name";
-      if (!houseNumber.trim()) e.houseNumber = "Please enter house number";
+      // houseNumber moved to Address step
       if (!houseType) e.houseType = "Please select house type";
       if (!memberCount) e.memberCount = "Please select number of members";
       if (memberCount === "More than 9" && (!customCount || parseInt(customCount) < 1)) e.customCount = "Enter a valid number";
