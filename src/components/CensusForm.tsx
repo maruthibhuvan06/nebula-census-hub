@@ -58,7 +58,7 @@ export default function CensusForm() {
 
   const actualCount = memberCount === "More than 9" ? parseInt(customCount) || 0 : parseInt(memberCount) || 0;
 
-  // Pincode auto-fill: State, District, Taluk only
+  // Pincode auto-fill: State and District only
   useEffect(() => {
     if (pincode.length !== 6) return;
     const controller = new AbortController();
@@ -76,13 +76,8 @@ export default function CensusForm() {
             const matchedDist = dists.find(d => d.toLowerCase() === po.District?.toLowerCase());
             if (matchedDist) setDistrict(matchedDist);
           }
-          // Auto-fill Taluk (Block field from API)
-          if (po.Block && po.Block !== "NA") {
-            setTaluk(po.Block);
-          } else if (po.Division) {
-            setTaluk(po.Division);
-          }
-          clearError("state"); clearError("district"); clearError("taluk"); clearError("pincode");
+          // Do NOT auto-fill Taluk, Village, Area, or Post Office
+          clearError("state"); clearError("district"); clearError("pincode");
         } else {
           toast.error("Invalid Pincode");
         }
