@@ -114,11 +114,13 @@ export default function CensusForm() {
   const validateStep = useCallback((): Errors => {
     const e: Errors = {};
 
-    // Step 0: Location (no pincode here anymore)
+    // Step 0: Address (includes pincode at end)
     if (step === 0) {
       if (!state) e.state = "Please select a state";
       if (!district) e.district = "Please select a district";
       if (!village.trim()) e.village = "Please enter village / area";
+      if (!pincode) e.pincode = "Pincode is required";
+      else if (!/^\d{6}$/.test(pincode)) e.pincode = "Pincode must be 6 digits";
     }
 
     // Step 1: Family details
@@ -130,7 +132,7 @@ export default function CensusForm() {
       if (memberCount === "More than 9" && (!customCount || parseInt(customCount) < 1)) e.customCount = "Enter a valid number";
     }
 
-    // Step 2: Members — all required fields mandatory
+    // Step 2: Members — all key fields are mandatory
     if (step === 2) {
       if (members.length === 0) {
         e.members = "Please add at least one family member";
@@ -148,12 +150,6 @@ export default function CensusForm() {
     }
 
     // Step 3: Additional — no strict required fields
-
-    // Step 4: Pincode (final step)
-    if (step === 4) {
-      if (!pincode) e.pincode = "Pincode is required";
-      else if (!/^\d{6}$/.test(pincode)) e.pincode = "Pincode must be 6 digits";
-    }
 
     return e;
   }, [step, state, district, village, pincode, headOfFamily, houseNumber, houseType, memberCount, customCount, members]);
