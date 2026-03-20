@@ -217,18 +217,23 @@ export default function CensusForm() {
       <AnimatePresence mode="wait">
         <motion.div key={step} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }} className="glass neon-border rounded-2xl p-6 md:p-8">
 
-          {/* Step 0: Location (no pincode) */}
+          {/* Step 0: Address Section */}
           {step === 0 && (
             <div>
               <h2 className="text-xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" /> Location Information
+                <MapPin className="h-5 w-5 text-primary" /> Address Information
               </h2>
-              <p className="text-sm text-muted-foreground mb-6">Select your location details</p>
+              <p className="text-sm text-muted-foreground mb-6">Enter your address details. Pincode auto-fills State & District.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FloatingSelect label="State" options={STATES} value={state} onChange={v => { setState(v); setDistrict(""); clearError("state"); }} searchable required error={errors.state} />
                 <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); clearError("district"); }} searchable required error={errors.district} />
                 <FloatingInput label="Taluk" value={taluk} onChange={v => setTaluk(v)} />
                 <FloatingInput label="Village / Area" value={village} onChange={v => { setVillage(v); clearError("village"); }} required error={errors.village} />
+                <FloatingInput label="House Number / Address Line" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} />
+                <div className="relative">
+                  <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
+                  {pincodeLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-primary" />}
+                </div>
               </div>
             </div>
           )}
