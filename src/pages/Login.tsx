@@ -88,7 +88,7 @@ export default function Login() {
             <Shield className="h-6 w-6 text-primary-foreground" />
           </motion.div>
           <div>
-            <h1 className="font-display font-bold text-xl text-foreground">Smart Census Portal</h1>
+            <h1 className="font-display font-bold text-xl text-foreground">National Census – Smart Census Portal</h1>
           </div>
         </div>
 
