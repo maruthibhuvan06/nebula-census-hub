@@ -11,8 +11,8 @@ import {
   type FamilyMember, type CensusEntry, addEntry,
 } from "@/lib/census-data";
 
-// Steps: Location → Family → Members → Additional → Pincode (last)
-const STEPS = ["Location", "Family", "Members", "Additional", "Pincode"];
+// Steps: Address → Family → Members → Additional
+const STEPS = ["Address", "Family", "Members", "Additional"];
 
 const emptyMember = (): FamilyMember => ({
   name: "", age: "", gender: "", education: "", occupation: "",
@@ -114,23 +114,25 @@ export default function CensusForm() {
   const validateStep = useCallback((): Errors => {
     const e: Errors = {};
 
-    // Step 0: Location (no pincode here anymore)
+    // Step 0: Address (includes pincode at end)
     if (step === 0) {
       if (!state) e.state = "Please select a state";
       if (!district) e.district = "Please select a district";
       if (!village.trim()) e.village = "Please enter village / area";
+      if (!pincode) e.pincode = "Pincode is required";
+      else if (!/^\d{6}$/.test(pincode)) e.pincode = "Pincode must be 6 digits";
     }
 
     // Step 1: Family details
     if (step === 1) {
       if (!headOfFamily.trim()) e.headOfFamily = "Please enter head of family name";
-      if (!houseNumber.trim()) e.houseNumber = "Please enter house number";
+      // houseNumber moved to Address step
       if (!houseType) e.houseType = "Please select house type";
       if (!memberCount) e.memberCount = "Please select number of members";
       if (memberCount === "More than 9" && (!customCount || parseInt(customCount) < 1)) e.customCount = "Enter a valid number";
     }
 
-    // Step 2: Members — all required fields mandatory
+    // Step 2: Members — all key fields are mandatory
     if (step === 2) {
       if (members.length === 0) {
         e.members = "Please add at least one family member";
@@ -148,12 +150,6 @@ export default function CensusForm() {
     }
 
     // Step 3: Additional — no strict required fields
-
-    // Step 4: Pincode (final step)
-    if (step === 4) {
-      if (!pincode) e.pincode = "Pincode is required";
-      else if (!/^\d{6}$/.test(pincode)) e.pincode = "Pincode must be 6 digits";
-    }
 
     return e;
   }, [step, state, district, village, pincode, headOfFamily, houseNumber, houseType, memberCount, customCount, members]);
@@ -221,18 +217,23 @@ export default function CensusForm() {
       <AnimatePresence mode="wait">
         <motion.div key={step} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }} className="glass neon-border rounded-2xl p-6 md:p-8">
 
-          {/* Step 0: Location (no pincode) */}
+          {/* Step 0: Address Section */}
           {step === 0 && (
             <div>
               <h2 className="text-xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" /> Location Information
+                <MapPin className="h-5 w-5 text-primary" /> Address Information
               </h2>
-              <p className="text-sm text-muted-foreground mb-6">Select your location details</p>
+              <p className="text-sm text-muted-foreground mb-6">Enter your address details. Pincode auto-fills State & District.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FloatingSelect label="State" options={STATES} value={state} onChange={v => { setState(v); setDistrict(""); clearError("state"); }} searchable required error={errors.state} />
                 <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); clearError("district"); }} searchable required error={errors.district} />
                 <FloatingInput label="Taluk" value={taluk} onChange={v => setTaluk(v)} />
                 <FloatingInput label="Village / Area" value={village} onChange={v => { setVillage(v); clearError("village"); }} required error={errors.village} />
+                <FloatingInput label="House Number / Address Line" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} />
+                <div className="relative">
+                  <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
+                  {pincodeLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-primary" />}
+                </div>
               </div>
             </div>
           )}
@@ -246,11 +247,10 @@ export default function CensusForm() {
               <p className="text-sm text-muted-foreground mb-6">Enter family head information</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FloatingInput label="Head of Family Name" value={headOfFamily} onChange={v => { setHeadOfFamily(v); clearError("headOfFamily"); }} required error={errors.headOfFamily} />
-                <FloatingInput label="House Number" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} required error={errors.houseNumber} />
                 <FloatingSelect label="Type of House" options={HOUSE_TYPES} value={houseType} onChange={v => { setHouseType(v); clearError("houseType"); }} required error={errors.houseType} />
                 <FloatingSelect label="Number of Family Members" options={["1","2","3","4","5","6","7","8","9","More than 9"]} value={memberCount} onChange={v => { handleMemberCountChange(v); clearError("memberCount"); }} required error={errors.memberCount} />
                 {memberCount === "More than 9" && (
-                  <div className="flex gap-2 md:col-span-2">
+                  <div className="flex gap-2">
                     <FloatingInput label="Enter exact number" value={customCount} onChange={v => { setCustomCount(v); clearError("customCount"); }} numericOnly error={errors.customCount} />
                     <button type="button" onClick={applyCustomCount} className="gradient-primary text-primary-foreground px-4 rounded-lg font-medium">Apply</button>
                   </div>
@@ -312,26 +312,8 @@ export default function CensusForm() {
             </div>
           )}
 
-          {/* Step 4: Pincode (final step) */}
-          {step === 4 && (
-            <div>
-              <h2 className="text-xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" /> Pincode Verification
-              </h2>
-              <p className="text-sm text-muted-foreground mb-6">Enter your 6-digit pincode to auto-fill State and District</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
-                  {pincodeLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-primary" />}
-                </div>
-                <div className="glass rounded-lg p-4 border border-border">
-                  <p className="text-xs text-muted-foreground mb-2">Auto-filled from pincode:</p>
-                  <p className="text-sm text-foreground"><span className="text-muted-foreground">State:</span> {state || "—"}</p>
-                  <p className="text-sm text-foreground"><span className="text-muted-foreground">District:</span> {district || "—"}</p>
-                </div>
-              </div>
-            </div>
-          )}
+
+
 
           {/* Navigation */}
           <div className="flex justify-between mt-8">
