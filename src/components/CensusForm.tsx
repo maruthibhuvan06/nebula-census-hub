@@ -247,6 +247,7 @@ export default function CensusForm() {
               <p className="text-sm text-muted-foreground mb-6">Enter family head information</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FloatingInput label="Head of Family Name" value={headOfFamily} onChange={v => { setHeadOfFamily(v); clearError("headOfFamily"); }} required error={errors.headOfFamily} />
+                <FloatingInput label="House Number" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} />
                 <FloatingSelect label="Type of House" options={HOUSE_TYPES} value={houseType} onChange={v => { setHouseType(v); clearError("houseType"); }} required error={errors.houseType} />
                 <FloatingSelect label="Number of Family Members" options={["1","2","3","4","5","6","7","8","9","More than 9"]} value={memberCount} onChange={v => { handleMemberCountChange(v); clearError("memberCount"); }} required error={errors.memberCount} />
                 {memberCount === "More than 9" && (
