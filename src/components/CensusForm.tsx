@@ -229,7 +229,7 @@ export default function CensusForm() {
                 <FloatingSelect label="District" options={districts} value={district} onChange={v => { setDistrict(v); clearError("district"); }} searchable required error={errors.district} />
                 <FloatingInput label="Taluk" value={taluk} onChange={v => setTaluk(v)} />
                 <FloatingInput label="Village / Area" value={village} onChange={v => { setVillage(v); clearError("village"); }} required error={errors.village} />
-                <FloatingInput label="House Number / Address Line" value={houseNumber} onChange={v => { setHouseNumber(v); clearError("houseNumber"); }} />
+                
                 <div className="relative">
                   <FloatingInput label="Pincode" value={pincode} onChange={v => { setPincode(v); clearError("pincode"); }} maxLength={6} required numericOnly error={errors.pincode} />
                   {pincodeLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-primary" />}
